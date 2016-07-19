@@ -1,0 +1,23 @@
+#!/bin/bash
+
+mkdir ~/testing -p
+
+ade $1 shell busybox timeout -t 10 -s SIGINT tinycap /data/d0-$2.wav
+ade $1 shell busybox timeout -t 10 -s SIGINT tinycap /data/d1-$2.wav -d 1
+
+ade $1 pull  /data/d0-$2.wav  ~/testing/ &
+timeout 5 ade $1 pull  /data/d0-$2.wav  ~/testing/ 
+
+
+ade $1 pull  /data/d1-$2.wav  ~/testing/ &
+timeout 5 ade $1 pull  /data/d1-$2.wav  ~/testing/ 
+
+ade $1 shell rm  /data/d0-$2.wav
+ade $1 shell rm  /data/d1-$2.wav
+
+audacity  ~/testing/d0-$2.wav
+audacity  ~/testing/d1-$2.wav
+
+
+
+

@@ -1,0 +1,112 @@
+#!/bin/bash
+
+re='^[0-9]+$'
+flg=0
+pul=0
+pus=0
+reb=0
+key=0
+count=0
+select=0
+device=""
+
+# Search command
+for ix in $@
+do
+	if [ $ix == "pull"   ]; then
+		pul=1
+	fi
+	if [ $ix == "push"   ]; then
+		pus=1
+	fi
+	if [ $ix == "reboot" ]; then
+		reb=1
+	fi
+	if [ $ix == "key"    ]; then
+		key=1
+	fi
+done
+
+# Parse command
+# Direct command
+if ! [[ $1 =~ $re ]] ; then
+	command=$@
+	flg=1
+else
+	command=${@:2}
+	device=192.168.1.$1:5555
+	adb connect 192.168.1.$1
+	adb connect 192.168.1.$1
+fi
+
+last=$?
+
+
+# List devices to help user choice
+if [ $last == 1 ] || [ $flg == 1 ]; then
+	# Mono Process
+	# Print list of devices
+	adb devices | while read line
+	do
+
+		if [ ! "$line" = "" ] && [ `echo $line | awk '{print $2}'` = "device" ]; then
+			device=`echo $line | awk '{print $1}'`
+			echo "[$count] $device ..."
+			count=$((count + 1))
+			#adb -s $device $@
+		fi
+		# Nutshell save count
+		echo "${count}" > /tmp/tempout
+	done
+
+	# Get recorded data
+	read -r -a count < /tmp/tempout
+
+	if [ $count == 1 ]; then
+		echo select single device
+		userdev=0
+	else
+		read userdev
+		if [ "$userdev" = "" ]; then
+			echo please select a device
+			exit
+		fi
+	fi
+	#echo $userdev
+	count=0
+	# Multi Process
+	# Get and Use device
+	while read line
+	do
+		if [ ! "$line" = "" ] && [ `echo $line | awk '{print $2}'` = "device" ]; then
+			device=`echo $line | awk '{print $1}'`
+			if [ $count == $userdev ]; then
+
+				echo "selected $count"
+				select=$count
+				break
+			fi
+			count=$((count + 1))
+		fi
+	done <<< "$(adb devices)"
+fi
+
+
+# End do the command
+if [[ $select =~ $re ]] ; then
+	echo "[$select] Launch $command with $device"
+	if   [ $pul == 1 ]; then
+		adb -s $device $command &
+		timeout 5 adb -s $device $command
+	elif [ $key == 1 ]; then
+		adb -s $device shell input keyevent ${command:3}
+	elif [ $pus == 1 ]; then
+		adb -s $device remount
+		adb -s $device $command
+	elif [ $reb == 1 ]; then
+		timeout 1 adb -s $device $command #because can be stuck
+		adb -s $device disconnect #disconnect dev from the adb list
+	else
+		adb -s $device $command
+	fi
+fi

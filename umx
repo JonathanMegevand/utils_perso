@@ -1,0 +1,9 @@
+#!/bin/bash
+
+sudo /home/jo/DEV/factory/imx-usb-loader/imx_usb $1
+
+
+
+
+
+

@@ -1,0 +1,52 @@
+#!/bin/bash
+
+prev=0
+curr=1
+per=50
+hys=400
+freq=0
+
+
+while [ "1" = "1" ]; do
+	#-Fetch cpu load
+	cpuload=$(top -b -n2 | grep "Cpu(s)"|tail -n 1 | awk '{print $2 + $4}')
+	loadcpu=${cpuload%.*}
+	echo $cpuload $loadcpu
+	bogo=$((curr*loadcpu))
+	echo bogo=$bogo $curr \[$((curr*per-hys)):$((curr*per+hys))\]
+	cat /sys/devices/virtual/thermal/thermal_zone0/temp
+	cat /sys/devices/platform/coretemp.0/hwmon/hwmon0/temp**input
+	#-Debug
+	cat /proc/cpuinfo | grep MH
+
+	# Regular script movements checker
+	if   [ $loadcpu -gt 25  ] && [ $loadcpu -lt 30 ]; then
+		echo not
+		curr=$curr
+	elif [ $loadcpu -gt 29  ]; then
+		curr=$((curr+2))
+		echo pl
+	else
+		curr=$((curr-2))
+		echo mn
+	fi
+
+	# ch
+	if   [ $curr -gt 32 ]; then
+		curr=32
+	elif [ $curr -lt 8  ]; then
+		curr=8
+	fi
+
+	# Update freq if need
+	if [ "$curr" != "$prev" ]; then
+		freq=$((curr*100000))
+		echo "Set max f=$curr p=$prev freq=$freq"
+		sudo cpufreq-set -u $freq
+		prev=$curr
+	fi
+
+	sleep 1
+done
+
+exit 0
